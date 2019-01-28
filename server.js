@@ -25,6 +25,8 @@ const addUsername = (connection, username) => {
 
 const addRoom = (connection, roomname) => {
   if (!rooms.includes(roomname)) {
+    const foundClient = clients.find(client => client.connection === connection)
+    foundClient.roomname = roomname
     rooms.push({roomname, offer: null})
     sendStatus(connection, 'success')
   } else {
@@ -32,13 +34,20 @@ const addRoom = (connection, roomname) => {
   }
 }
 
+const joinRoom = (connection, roomname) => {
+  const foundClient = clients.find(client => client.connection === connection)
+  foundClient.roomname = roomname
+}
+
 const getRoom = (connection) => {
   connection.send(JSON.stringify(rooms.map(room => room.roomname)))
 }
 
 const handleOffer = (messageObj) => {
+  console.log(messageObj)
   const selectRoom = rooms.find(room => room.roomname === messageObj.roomname)
   selectRoom.offer = messageObj.offer
+  console.log("select room", selectRoom.offer)
 }
 
 const getOffer = (messageObj, connection) => {
@@ -51,16 +60,26 @@ const getAnswer = (messageObj, connection) => {
 }
 
 const getCandidate = (messageObj, connection) => {
-  console.log(messageObj)
   const selectRoom = rooms.find(room => room.roomname === messageObj.roomname)
   selectRoom.candidate = messageObj.candidate
-  clients.forEach(client => {
+  clients.map(obj => obj.connection).forEach(client => {
     client.send(JSON.stringify(messageObj))
   })
 }
 
+const checkRoomname = (connection, room) => {
+  const checkRoom = clients.filter(selectroom => selectroom.roomname === room).length
+  const jsonRoom = JSON.stringify({checkRoom, type: 'numOfPeople'})
+  connection.send(jsonRoom)
+}
+
+const setRoomNull = (connection) => {
+  const checkRoom = clients.find(client => client.connection === connection)
+  checkRoom.roomname = null
+}
+
 wss.on('connection', connection => {
-  clients.push(connection)
+  clients.push({connection, roomname: null})
   connection.on('message', (message) => {
     let messageObj = JSON.parse(message)
     switch (messageObj.type) {
@@ -70,8 +89,17 @@ wss.on('connection', connection => {
       case 'addRoomname':
         addRoom(connection, messageObj.roomname)
         break
+      case 'joinRoomname':
+        joinRoom(connection, messageObj.roomname)
+        break
       case 'getRoomname':
         getRoom(connection)
+        break
+      case 'checkRoomname':
+        checkRoomname(connection, messageObj.roomname)
+        break
+      case 'setRoomNull':
+        setRoomNull(connection)
         break
       case 'offer':
         handleOffer(messageObj)
@@ -87,3 +115,9 @@ wss.on('connection', connection => {
 
   })
 })
+
+setInterval(() => {
+  clients = clients.filter(client => client.connection.readyState !== client.connection.CLOSED)
+  const checkRoom = clients.filter(selectroom => selectroom.roomname === 'ee').length
+  console.log("checkroom", checkRoom)
+}, 100)
