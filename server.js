@@ -7,8 +7,6 @@ let users = [],
     rooms = [],
     clients = []
 
-
-
 const sendStatus = (connection, status) => {
   let message = {status}
   connection.send(JSON.stringify(message))
@@ -31,7 +29,6 @@ const addRoom = (connection, roomname) => {
     sendStatus(connection, 'success')
     let foundClient = clients.find(client => client.connection === connection)
     foundClient.roomname = roomname
-    console.log("inside addRoom", foundClient.roomname)
   } else {
     sendStatus(connection, 'fail')
   }
@@ -53,8 +50,6 @@ const getOffer = (messageObj, connection) => {
   foundClient.roomname = messageObj.roomname
 
   clients.filter(client => client.roomname === messageObj.roomname).forEach(cl => cl.connection.send(JSON.stringify({type: 'join', username: foundClient.username})))
-
-  console.log("inside getOffer", foundClient.roomname)
 }
 
 const getAnswer = (messageObj, connection) => {
