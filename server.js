@@ -69,6 +69,7 @@ const getCandidate = (messageObj, connection) => {
   })
 }
 
+
 wss.on('connection', connection => {
   clients.push({connection, username: null, roomname: null})
   connection.on('message', (message) => {
@@ -99,15 +100,5 @@ wss.on('connection', connection => {
 })
 
 setInterval(() => {
-  let previousArray = [...clients]
-  let previousSize = previousArray.length
   clients = clients.filter(client => client.connection.readyState === client.connection.OPEN)
-
-  if (previousSize > clients.size) {
-    const leftover = previousArray.filter(arr => !clients.includes(arr))
-    console.log(leftover.roomname, leftover.username)
-    // clients.filter(client => client.roomname === )
-    // console.log(clients.roomname, clients.username)
-  }
-
 }, 100)
