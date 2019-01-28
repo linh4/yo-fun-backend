@@ -18,6 +18,8 @@ const addUsername = (connection, username) => {
   if (!users.includes(username)) {
     users.push(username)
     sendStatus(connection, 'success')
+    const foundClient = clients.find(client => client.connection === connection)
+    foundClient.username = username
   } else {
     sendStatus(connection, 'fail')
   }
@@ -27,6 +29,9 @@ const addRoom = (connection, roomname) => {
   if (!rooms.includes(roomname)) {
     rooms.push({roomname, offer: null})
     sendStatus(connection, 'success')
+    let foundClient = clients.find(client => client.connection === connection)
+    foundClient.roomname = roomname
+    console.log("inside addRoom", foundClient.roomname)
   } else {
     sendStatus(connection, 'fail')
   }
@@ -44,6 +49,12 @@ const handleOffer = (messageObj) => {
 const getOffer = (messageObj, connection) => {
   const selectRoom = rooms.find(room => room.roomname === messageObj.roomname)
   connection.send(JSON.stringify(selectRoom.offer))
+  let foundClient = clients.find(client => client.connection === connection)
+  foundClient.roomname = messageObj.roomname
+
+  clients.filter(client => client.roomname === messageObj.roomname).forEach(cl => cl.connection.send(JSON.stringify({type: 'join', username: foundClient.username})))
+
+  console.log("inside getOffer", foundClient.roomname)
 }
 
 const getAnswer = (messageObj, connection) => {
@@ -51,16 +62,15 @@ const getAnswer = (messageObj, connection) => {
 }
 
 const getCandidate = (messageObj, connection) => {
-  console.log(messageObj)
   const selectRoom = rooms.find(room => room.roomname === messageObj.roomname)
   selectRoom.candidate = messageObj.candidate
-  clients.forEach(client => {
-    client.send(JSON.stringify(messageObj))
+  clients.map(client => client.connection).forEach(connection => {
+    connection.send(JSON.stringify(messageObj))
   })
 }
 
 wss.on('connection', connection => {
-  clients.push(connection)
+  clients.push({connection, username: null, roomname: null})
   connection.on('message', (message) => {
     let messageObj = JSON.parse(message)
     switch (messageObj.type) {
@@ -87,3 +97,17 @@ wss.on('connection', connection => {
 
   })
 })
+
+setInterval(() => {
+  let previousArray = [...clients]
+  let previousSize = previousArray.length
+  clients = clients.filter(client => client.connection.readyState === client.connection.OPEN)
+
+  if (previousSize > clients.size) {
+    const leftover = previousArray.filter(arr => !clients.includes(arr))
+    console.log(leftover.roomname, leftover.username)
+    // clients.filter(client => client.roomname === )
+    // console.log(clients.roomname, clients.username)
+  }
+
+}, 100)
